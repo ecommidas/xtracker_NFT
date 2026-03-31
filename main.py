@@ -9,10 +9,9 @@ BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
 NITTER_INSTANCES = [
-    "https://rss.xcancel.com",
-    "https://nitter.poast.org",
-    "https://nitter.privacydev.net",
-    "https://nitter.1d4.us",
+
+    "https://xcancel.com",
+    "https://nuku.trabun.org",
 ]
 
 CHECK_INTERVAL = 600  # 10 phút/lần
