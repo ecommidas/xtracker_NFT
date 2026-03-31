@@ -8,14 +8,14 @@ import json
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
-# Danh sách Nitter instances (dự phòng nếu 1 instance bị down)
 NITTER_INSTANCES = [
-    "https://xcancel.com",
-    "https://nuku.trabun.org",
-
+    "https://rss.xcancel.com",
+    "https://nitter.poast.org",
+    "https://nitter.privacydev.net",
+    "https://nitter.1d4.us",
 ]
 
-CHECK_INTERVAL = 300  # 10 phút/lần
+CHECK_INTERVAL = 600  # 10 phút/lần
 SEEN_IDS_FILE = "seen_ids.json"
 
 # ---- LOAD / SAVE SEEN IDS ----
@@ -28,7 +28,7 @@ def load_seen_ids():
 
 def save_seen_ids(data):
     with open(SEEN_IDS_FILE, "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=2)
 
 # ---- ĐỌC DANH SÁCH TÀI KHOẢN ----
 def load_accounts(filepath="accounts.txt"):
@@ -39,28 +39,41 @@ def load_accounts(filepath="accounts.txt"):
             if line.strip() and not line.startswith("#")
         ]
 
-# ---- LẤY RSS FEED (thử từng instance dự phòng) ----
+# ---- LẤY RSS FEED ----
 def get_rss_feed(username):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+    }
     for instance in NITTER_INSTANCES:
         try:
             url = f"{instance}/{username}/rss"
-            feed = feedparser.parse(url)
-            if feed.entries:
-                return feed.entries
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                feed = feedparser.parse(response.content)
+                if feed.entries:
+                    return feed.entries
+                else:
+                    print(f"  ⚠️  {instance} — feed trống cho @{username}")
+            else:
+                print(f"  ⚠️  {instance} — HTTP {response.status_code}")
         except Exception as e:
-            print(f"  ⚠️  Instance {instance} lỗi: {e}")
+            print(f"  ⚠️  {instance} lỗi: {e}")
     return []
 
 # ---- GỬI TELEGRAM ----
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
-        requests.post(url, json={
+        r = requests.post(url, json={
             "chat_id": CHAT_ID,
             "text": message,
             "parse_mode": "HTML",
             "disable_web_page_preview": False
         })
+        if r.status_code != 200:
+            print(f"  ❌ Telegram lỗi {r.status_code}: {r.text}")
     except Exception as e:
         print(f"  ❌ Lỗi gửi Telegram: {e}")
 
@@ -72,16 +85,16 @@ def main():
 
     seen_ids = load_seen_ids()
 
-    # Khởi tạo seen_ids lần đầu (bỏ qua tweet cũ, không gửi spam)
+    # Khởi tạo seen_ids lần đầu (bỏ qua tweet cũ)
     print("📥 Đang khởi tạo, bỏ qua tweet cũ...")
     for username in ACCOUNTS:
         if username not in seen_ids:
             entries = get_rss_feed(username)
             if entries:
                 seen_ids[username] = entries[0].id
-                print(f"  ✅ @{username} — bỏ qua {len(entries)} tweet cũ")
+                print(f"  ✅ @{username} — bỏ qua {len(entries)} tweet cũ (last id: {entries[0].id})")
             else:
-                print(f"  ⚠️  @{username} — không lấy được feed")
+                print(f"  ⚠️  @{username} — không lấy được feed lúc khởi động")
     save_seen_ids(seen_ids)
 
     send_telegram(
@@ -92,21 +105,29 @@ def main():
     print(f"\n✅ Bắt đầu vòng lặp, quét mỗi {CHECK_INTERVAL // 60} phút...\n")
 
     while True:
+        print(f"\n🔄 Bắt đầu quét lúc {time.strftime('%H:%M:%S')}...")
         for username in ACCOUNTS:
             try:
                 entries = get_rss_feed(username)
                 if not entries:
+                    print(f"  ⚠️  @{username} — không lấy được feed, bỏ qua")
+                    time.sleep(3)
                     continue
 
                 last_seen = seen_ids.get(username)
-                new_entries = []
 
+                # DEBUG: in ra để so sánh
+                print(f"  🔍 @{username} — tweet mới nhất : {entries[0].id}")
+                print(f"  🔍 @{username} — last seen      : {last_seen}")
+
+                new_entries = []
                 for entry in entries:
                     if entry.id == last_seen:
                         break
                     new_entries.append(entry)
 
                 if new_entries:
+                    print(f"  ✅ @{username} — có {len(new_entries)} tweet mới!")
                     seen_ids[username] = entries[0].id
                     save_seen_ids(seen_ids)
 
@@ -125,8 +146,10 @@ def main():
                         )
                         send_telegram(msg)
                         print(f"  📨 Đã gửi tweet từ @{username}")
+                else:
+                    print(f"  — @{username} — không có gì mới")
 
-                time.sleep(3)  # Cách nhau 3s giữa các tài khoản, tránh bị block
+                time.sleep(3)  # Nghỉ 3s giữa các tài khoản
 
             except Exception as e:
                 print(f"  ⚠️  Lỗi khi check @{username}: {e}")
