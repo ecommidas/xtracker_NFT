@@ -10,9 +10,10 @@ CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
 # Danh sách Nitter instances (dự phòng nếu 1 instance bị down)
 NITTER_INSTANCES = [
-    "https://nitter.poast.org",
-    "https://nitter.privacydev.net",
-    "https://nitter.1d4.us",
+    "https://nitter.net",
+    "https://nitter.catsarch.com",
+    "https://nitter.tiekoetter.com",
+    "https://nitter.space"
 ]
 
 CHECK_INTERVAL = 600  # 10 phút/lần
