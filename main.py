@@ -47,6 +47,7 @@ def get_rss_feed(username):
     for instance in NITTER_INSTANCES:
         try:
             url = f"{instance}/{username}/rss"
+            print(f"  📡 Đang fetch: {url}")   # ← THÊM DÒNG NÀY
             response = requests.get(url, headers=headers, timeout=10)
             if response.status_code == 200:
                 feed = feedparser.parse(response.content)
