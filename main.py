@@ -13,7 +13,7 @@ NITTER_INSTANCES = [
     "https://rss.xcancel.com",
 ]
 
-CHECK_INTERVAL = 600  # 10 phút/lần
+CHECK_INTERVAL = 300  # 10 phút/lần
 SEEN_IDS_FILE = "seen_ids.json"
 
 # ---- LOAD / SAVE SEEN IDS ----
