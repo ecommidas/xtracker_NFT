@@ -10,8 +10,7 @@ CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
 NITTER_INSTANCES = [
 
-    "https://xcancel.com",
-    "https://nuku.trabun.org",
+    "https://rss.xcancel.com",
 ]
 
 CHECK_INTERVAL = 600  # 10 phút/lần
